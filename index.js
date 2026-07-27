@@ -8,6 +8,7 @@ const PORT = process.env.PORT || 10000;
 const VERIFY_TOKEN = process.env.VERIFY_TOKEN || "YUKI123";
 const PAGE_ACCESS_TOKEN = process.env.PAGE_ACCESS_TOKEN;
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
+const IG_PAGE_ID = process.env.IG_PAGE_ID; // معرف حساب إنستغرام التجاري
 
 app.use(bodyParser.json());
 
@@ -25,7 +26,7 @@ app.get("/webhook", (req, res) => {
   }
 });
 
-// 2. استقبال الرسائل من ماسنجر أو إنستغرام
+// 2. استقبال الرسائل من ماسنجر أو إنستغرام (POST)
 app.post("/webhook", async (req, res) => {
   const body = req.body;
 
@@ -44,14 +45,12 @@ app.post("/webhook", async (req, res) => {
       }
 
       for (const webhookEvent of messagingEvents) {
-        // تحديد الـ ID ومعرفة إذا كانت الرسالة من إنستغرام أو ماسنجر
         const senderId = webhookEvent.sender?.id || webhookEvent.from?.id;
         const userText = webhookEvent.message?.text || webhookEvent.text;
-        const isInstagram = body.object === "instagram" || webhookEvent.watermark !== undefined || (entry.id !== process.env.FACEBOOK_PAGE_ID && body.object === "page");
 
         if (senderId && userText) {
           console.log(`Message from [${body.object}]: ${userText}`);
-          await handleAiResponse(senderId, userText);
+          await handleAiResponse(senderId, userText, body.object);
         }
       }
     }
@@ -61,7 +60,7 @@ app.post("/webhook", async (req, res) => {
 });
 
 // دالة توليد الرد من الذكاء الاصطناعي
-async function handleAiResponse(senderId, userText) {
+async function handleAiResponse(senderId, userText, platform) {
   try {
     const aiResponse = await axios.post(
       'https://openrouter.ai/api/v1/chat/completions',
@@ -89,30 +88,38 @@ async function handleAiResponse(senderId, userText) {
     );
 
     const replyText = aiResponse.data.choices[0].message.content || "أهلاً بك يا غالي";
-    await sendMessage(senderId, replyText);
+    await sendMessage(senderId, replyText, platform);
 
   } catch (err) {
     console.error("OpenRouter Error:", err.response?.data || err.message);
   }
 }
 
-// دالة إرسال الرسالة الموحدة (تتولى إرسال الرد لإنستغرام وماسنجر)
-async function sendMessage(recipientId, text) {
-  // واجهة برمجة التطبيقات الخاصة بـ Meta للرسائل واحدة للطرفين طالما التوكن يمتلك صلاحيات الحسابين
-  const url = `https://graph.facebook.com/v18.0/me/messages?access_token=${PAGE_ACCESS_TOKEN}`;
+// دالة إرسال الرسالة (تتعامل تلقائياً مع ماسنجر أو إنستغرام بناءً على المنصة)
+async function sendMessage(recipientId, text, platform) {
+  let url = '';
+  
+  if (platform === 'instagram' && IG_PAGE_ID) {
+    // إرسال لإنستغرام باستخدام معرّف إنستغرام التجاري
+    url = `https://graph.facebook.com/v18.0/${IG_PAGE_ID}/messages?access_token=${PAGE_ACCESS_TOKEN}`;
+  } else {
+    // إرسال لماسنجر بالطريقة الاعتيادية
+    url = `https://graph.facebook.com/v18.0/me/messages?access_token=${PAGE_ACCESS_TOKEN}`;
+  }
+
   try {
     await axios.post(url, {
       recipient: { id: recipientId },
       message: { text: text }
     });
-    console.log("Message sent to Meta successfully!");
+    console.log(`Message sent to [${platform}] successfully!`);
   } catch (error) {
     console.error("Meta Send Error:", error.response?.data || error.message);
   }
 }
 
 app.get("/", (req, res) => {
-  res.send("Yuki Bot is live!");
+  res.send("Yuki Bot (Messenger & Instagram) is live!");
 });
 
 app.listen(PORT, () => {
