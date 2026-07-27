@@ -11,7 +11,7 @@ const PAGE_ACCESS_TOKEN = process.env.PAGE_ACCESS_TOKEN;
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || process.env.GEN_API;
 
 const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
-// تم تعديل اسم الموديل إلى الموديل المستقر والمتاح حالياً
+// استخدام النموذج المدعوم حالياً
 const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
 app.use(bodyParser.json());
@@ -55,7 +55,6 @@ app.post("/webhook", async (req, res) => {
             await sendMessage(senderId, replyText);
           } catch (err) {
             console.error("Gemini Error:", err.message);
-            // تم إيقاف الرد التلقائي بنص الخطأ لمنع تكرار الحلقات والسبام
           }
         }
       }
