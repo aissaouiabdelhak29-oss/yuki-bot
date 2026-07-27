@@ -7,7 +7,7 @@ app.use(bodyParser.json());
 
 const PAGE_ACCESS_TOKEN = 'EAAPZA5LSy8NEBSO6usXyfFPGVi2EETZAy0NcPYBasgdkqvZB9YtITUG4qgszzhPZAG2YCKjtsvyDmckJ5wsFWZBtlMRLIap7LS4PaEUx7zvPsZANwPmiZC3R9dBwLLHi0DJMMrTR1bbZCNZBC4qjVWU1cgZBPYSu4Ofne1Qhr8T9hcaPny9f66vkj7T4shr2djsdIY9rGCoQZDZD';
 const VERIFY_TOKEN = 'YUKI123';
-const GEMINI_API_KEY = 'AQ.Ab8RN6KUjn0wbjQRmQtdxvEXT1z8XpeyhIBn-SFcW0VxIyei0w';
+const GEMINI_API_KEY = 'AQ.Ab8RN6J1Otbq7pOk1N-oG0TfS9osoEOiBAUKxjrOoQnQE4JI6A';
 
 app.get('/webhook', (req, res) => {
     const mode = req.query['hub.mode'];
