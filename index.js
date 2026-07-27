@@ -5,10 +5,12 @@ const axios = require('axios');
 const app = express();
 app.use(bodyParser.json());
 
+// جلب المفاتيح بأمان من متغيرات البيئة في Render
 const PAGE_ACCESS_TOKEN = process.env.PAGE_ACCESS_TOKEN;
 const VERIFY_TOKEN = 'YUKI123';
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
+// مسار التحقق من الويب هوك الخاص بفيسبوك
 app.get('/webhook', (req, res) => {
     const mode = req.query['hub.mode'];
     const token = req.query['hub.verify_token'];
@@ -26,6 +28,7 @@ app.get('/webhook', (req, res) => {
     }
 });
 
+// مسار استقبال الرسائل من ماسنجر ومعالجتها عبر جيمناي
 app.post('/webhook', async (req, res) => {
     const body = req.body;
 
@@ -41,8 +44,9 @@ app.post('/webhook', async (req, res) => {
                 console.log(`Received message from ${sender_psid}: ${userMessage}`);
 
                 try {
+                    // الاتصال بنموذج gemini-3.6-flash المحدث
                     const geminiResponse = await axios.post(
-                        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+                        `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${GEMINI_API_KEY}`,
                         {
                             contents: [{ parts: [{ text: userMessage }] }]
                         }
@@ -62,6 +66,7 @@ app.post('/webhook', async (req, res) => {
     }
 });
 
+// دالة إرسال الرد إلى مستخدم الماسنجر
 async function callSendAPI(sender_psid, responseText) {
     const request_body = {
         recipient: { id: sender_psid },
