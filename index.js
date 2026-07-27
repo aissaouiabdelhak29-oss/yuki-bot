@@ -1,7 +1,6 @@
 const express = require('express');
 const bodyParser = require('body-parser');
 const axios = require('axios');
-const { GoogleGenAI } = require('@google/genai');
 
 const app = express();
 app.use(bodyParser.json());
@@ -9,10 +8,8 @@ app.use(bodyParser.json());
 const PAGE_ACCESS_TOKEN = 'EAAPZA5LSy8NEBSO6usXyfFPGVi2EETZAy0NcPYBasgdkqvZB9YtITUG4qgszzhPZAG2YCKjtsvyDmckJ5wsFWZBtlMRLIap7LS4PaEUx7zvPsZANwPmiZC3R9dBwLLHi0DJMMrTR1bbZCNZBC4qjVWU1cgZBPYSu4Ofne1Qhr8T9hcaPny9f66vkj7T4shr2djsdIY9rGCoQZDZD';
 const VERIFY_TOKEN = 'YUKI123';
 
-// ضع مفتاح الـ API الحقيقي هنا بين العلامتين التنقيصتين بدلاً من النص العربي
-const GEMINI_API_KEY = 'AQ.Ab8RN6KWq89gbrsUPZwbr-bOEZPJm20-YZCEs_xk0SLHrMmDnQ';
-
-const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
+// ضع مفتاحك الذي ظهر في الصورة هنا بالكامل
+const GEMINI_API_KEY = 'AQ.Ab8RN6KUjn0wbjQRmQtdxvEXT1z8XpeyhIBn-SFcW0VxIyei0w';
 
 app.get('/webhook', (req, res) => {
     const mode = req.query['hub.mode'];
@@ -46,16 +43,19 @@ app.post('/webhook', async (req, res) => {
                 console.log(`Received message from ${sender_psid}: ${userMessage}`);
 
                 try {
-                    const response = await ai.models.generateContent({
-                        model: 'gemini-2.5-flash',
-                        contents: userMessage,
-                    });
+                    // الاتصال المباشر عبر الـ API بدون عقد المكتبات
+                    const geminiResponse = await axios.post(
+                        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+                        {
+                            contents: [{ parts: [{ text: userMessage }] }]
+                        }
+                    );
 
-                    const botReply = response.text || "عذراً، لم أستطع توليد رد.";
+                    const botReply = geminiResponse.data.candidates[0].content.parts[0].text || "عذراً، لم أستطع توليد رد.";
                     await callSendAPI(sender_psid, botReply);
                 } catch (error) {
-                    console.error('Error generating AI response:', error);
-                    await callSendAPI(sender_psid, "عذراً، واجهت مشكلة تقنية بسيطة.");
+                    console.error('Error generating AI response:', error.response?.data || error.message);
+                    await callSendAPI(sender_psid, "عذراً، حدث خطأ في معالجة الذكاء الاصطناعي.");
                 }
             }
         }
