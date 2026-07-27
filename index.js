@@ -11,8 +11,8 @@ const PAGE_ACCESS_TOKEN = process.env.PAGE_ACCESS_TOKEN;
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || process.env.GEN_API;
 
 const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
-// استخدام النموذج المدعوم حالياً
-const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+// استخدام أحدث نموذج مستقر مدعوم حالياً
+const model = genAI.getGenerativeModel({ model: "gemini-3.5-flash" });
 
 app.use(bodyParser.json());
 
