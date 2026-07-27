@@ -5,9 +5,9 @@ const axios = require('axios');
 const app = express();
 app.use(bodyParser.json());
 
-const PAGE_ACCESS_TOKEN = 'EAAPZA5LSy8NEBSO6usXyfFPGVi2EETZAy0NcPYBasgdkqvZB9YtITUG4qgszzhPZAG2YCKjtsvyDmckJ5wsFWZBtlMRLIap7LS4PaEUx7zvPsZANwPmiZC3R9dBwLLHi0DJMMrTR1bbZCNZBC4qjVWU1cgZBPYSu4Ofne1Qhr8T9hcaPny9f66vkj7T4shr2djsdIY9rGCoQZDZD';
+const PAGE_ACCESS_TOKEN = process.env.PAGE_ACCESS_TOKEN;
 const VERIFY_TOKEN = 'YUKI123';
-const GEMINI_API_KEY = 'AQ.Ab8RN6J1Otbq7pOk1N-oG0TfS9osoEOiBAUKxjrOoQnQE4JI6A';
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
 app.get('/webhook', (req, res) => {
     const mode = req.query['hub.mode'];
@@ -41,7 +41,6 @@ app.post('/webhook', async (req, res) => {
                 console.log(`Received message from ${sender_psid}: ${userMessage}`);
 
                 try {
-                    // استخدام واجهة الـ API الرسمية مباشرة بدون أي حزم معقدة
                     const geminiResponse = await axios.post(
                         `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
                         {
