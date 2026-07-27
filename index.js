@@ -1,7 +1,6 @@
 const express = require('express');
 const bodyParser = require('body-parser');
 const axios = require('axios');
-const { GoogleGenerativeAI } = require('@google/generative-ai');
 
 const app = express();
 app.use(bodyParser.json());
@@ -9,9 +8,6 @@ app.use(bodyParser.json());
 const PAGE_ACCESS_TOKEN = 'EAAPZA5LSy8NEBSO6usXyfFPGVi2EETZAy0NcPYBasgdkqvZB9YtITUG4qgszzhPZAG2YCKjtsvyDmckJ5wsFWZBtlMRLIap7LS4PaEUx7zvPsZANwPmiZC3R9dBwLLHi0DJMMrTR1bbZCNZBC4qjVWU1cgZBPYSu4Ofne1Qhr8T9hcaPny9f66vkj7T4shr2djsdIY9rGCoQZDZD';
 const VERIFY_TOKEN = 'YUKI123';
 const GEMINI_API_KEY = 'AQ.Ab8RN6KUjn0wbjQRmQtdxvEXT1z8XpeyhIBn-SFcW0VxIyei0w';
-
-// تهيئة العميل بالطريقة الرسمية المستقرة
-const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
 
 app.get('/webhook', (req, res) => {
     const mode = req.query['hub.mode'];
@@ -45,14 +41,18 @@ app.post('/webhook', async (req, res) => {
                 console.log(`Received message from ${sender_psid}: ${userMessage}`);
 
                 try {
-                    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
-                    const result = await model.generateContent(userMessage);
-                    const response = await result.response;
-                    const botReply = response.text() || "عذراً، لم أستطع توليد رد.";
-                    
+                    // استخدام واجهة الـ API الرسمية مباشرة بدون أي حزم معقدة
+                    const geminiResponse = await axios.post(
+                        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+                        {
+                            contents: [{ parts: [{ text: userMessage }] }]
+                        }
+                    );
+
+                    const botReply = geminiResponse.data.candidates[0].content.parts[0].text || "عذراً، لم أستطع توليد رد.";
                     await callSendAPI(sender_psid, botReply);
                 } catch (error) {
-                    console.error('Error generating AI response:', error.message);
+                    console.error('Error generating AI response:', error.response?.data || error.message);
                     await callSendAPI(sender_psid, "عذراً، حدث خطأ في معالجة الذكاء الاصطناعي.");
                 }
             }
