@@ -5,10 +5,11 @@ const axios = require("axios");
 const app = express();
 const PORT = process.env.PORT || 10000;
 
+// المتغيرات الأساسية
 const VERIFY_TOKEN = process.env.VERIFY_TOKEN || "YUKI123";
-const PAGE_ACCESS_TOKEN = process.env.PAGE_ACCESS_TOKEN;
-const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
-const IG_PAGE_ID = process.env.IG_PAGE_ID; // معرف حساب إنستغرام التجاري
+const PAGE_ACCESS_TOKEN = process.env.PAGE_ACCESS_TOKEN; // توكن ماسنجر
+const IG_ACCESS_TOKEN = process.env.IG_ACCESS_TOKEN;     // توكن إنستغرام الجديد
+const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY; // مفتاح الذكاء الاصطناعي
 
 app.use(bodyParser.json());
 
@@ -59,7 +60,7 @@ app.post("/webhook", async (req, res) => {
   }
 });
 
-// دالة توليد الرد من الذكاء الاصطناعي
+// دالة توليد الرد من الذكاء الاصطناعي (OpenRouter)
 async function handleAiResponse(senderId, userText, platform) {
   try {
     const aiResponse = await axios.post(
@@ -95,15 +96,15 @@ async function handleAiResponse(senderId, userText, platform) {
   }
 }
 
-// دالة إرسال الرسالة (تتعامل تلقائياً مع ماسنجر أو إنستغرام بناءً على المنصة)
+// دالة إرسال الرد وتوزيع التوكنات حسب المنصة
 async function sendMessage(recipientId, text, platform) {
   let url = '';
-  
-  if (platform === 'instagram' && IG_PAGE_ID) {
-    // إرسال لإنستغرام باستخدام معرّف إنستغرام التجاري
-    url = `https://graph.facebook.com/v18.0/${IG_PAGE_ID}/messages?access_token=${PAGE_ACCESS_TOKEN}`;
+
+  if (platform === 'instagram' && IG_ACCESS_TOKEN) {
+    // إرسال لإنستغرام باستخدام توكن إنستغرام الخاص ومسار me/messages
+    url = `https://graph.facebook.com/v18.0/me/messages?access_token=${IG_ACCESS_TOKEN}`;
   } else {
-    // إرسال لماسنجر بالطريقة الاعتيادية
+    // إرسال لماسنجر باستخدام توكن الفيسبوك
     url = `https://graph.facebook.com/v18.0/me/messages?access_token=${PAGE_ACCESS_TOKEN}`;
   }
 
@@ -119,7 +120,7 @@ async function sendMessage(recipientId, text, platform) {
 }
 
 app.get("/", (req, res) => {
-  res.send("Yuki Bot (Messenger & Instagram) is live!");
+  res.send("Yuki Bot is live!");
 });
 
 app.listen(PORT, () => {
