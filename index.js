@@ -1,20 +1,15 @@
 const express = require('express');
 const bodyParser = require('body-parser');
 const axios = require('axios');
-const { GoogleGenAI } = require('@google/genai');
 
 const app = express();
 app.use(bodyParser.json());
 
-// جلب المفاتيح من بيئة العمل بأمان تام (Render Environment Variables)
 const PAGE_ACCESS_TOKEN = process.env.PAGE_ACCESS_TOKEN;
 const VERIFY_TOKEN = 'YUKI123';
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+const OPENAI_API_KEY = process.env.OPENAI_API_KEY; // ضع مفتاح ChatGPT في متغيرات البيئة
 
-// تهيئة عميل Gemini الجديد
-const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
-
-// 1. التحقق من الويب هوك (Webhook Verification) مطلوب من فيسبوك
+// 1. التحقق من الويب هوك (Webhook Verification)
 app.get('/webhook', (req, res) => {
     const mode = req.query['hub.mode'];
     const token = req.query['hub.verify_token'];
@@ -32,22 +27,18 @@ app.post('/webhook', async (req, res) => {
     const body = req.body;
 
     if (body.object === 'page') {
-        // الرد الفوري على فيسبوك لمنع تكرار إرسال الرسائل (السبام)
         res.status(200).send('EVENT_RECEIVED');
 
         for (const entry of body.entry) {
             if (entry.messaging && entry.messaging[0]) {
                 const webhookEvent = entry.messaging[0];
-                const senderPsid = webhookEvent.sender.id; // معرف المستخدم على ميسنجر
+                const senderPsid = webhookEvent.sender.id;
 
-                // التحقق من أن الرسالة نصية وليست مجرد تفاعل أو إعجاب
                 if (webhookEvent.message && webhookEvent.message.text) {
                     const userMessage = webhookEvent.message.text;
                     
-                    // توليد الرد باستخدام Gemini
-                    const botReply = await getGeminiResponse(userMessage);
-                    
-                    // إرسال الرد للمستخدم عبر ميسنجر
+                    // توليد الرد باستخدام ChatGPT
+                    const botReply = await getOpenAIResponse(userMessage);
                     await callSendAPI(senderPsid, botReply);
                 }
             }
@@ -57,17 +48,26 @@ app.post('/webhook', async (req, res) => {
     }
 });
 
-// دالة الاتصال بـ Gemini لتوليد الرد
-async function getGeminiResponse(prompt) {
+// دالة الاتصال بـ ChatGPT لتوليد الرد
+async function getOpenAIResponse(prompt) {
     try {
-        const response = await ai.models.generateContent({
-            model: 'gemini-1.5-flash', // النموذج المستقر والمعتمد
-            contents: prompt,
-        });
-        return response.text;
+        const response = await axios.post(
+            'https://api.openai.com/v1/chat/completions',
+            {
+                model: 'gpt-4o-mini', // أو gpt-3.5-turbo
+                messages: [{ role: 'user', content: prompt }]
+            },
+            {
+                headers: {
+                    'Authorization': `Bearer ${OPENAI_API_KEY}`,
+                    'Content-Type': 'application/json'
+                }
+            }
+        );
+        return response.data.choices[0].message.content.trim();
     } catch (error) {
-        console.error('Gemini Detailed Error:', error.response ? error.response.data : error.message);
-        return 'عذراً، حدث خطأ تقني في معالجة طلبك.';
+        console.error('OpenAI Error:', error.response?.data || error.message);
+        return 'عذراً، حدث خطأ تقني في معالجة طلبك عبر ChatGPT.';
     }
 }
 
@@ -85,7 +85,6 @@ async function callSendAPI(senderPsid, responseText) {
     }
 }
 
-// تشغيل السيرفر على المنفذ المطلوب من Render تلقائياً
 const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
