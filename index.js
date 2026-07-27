@@ -10,9 +10,8 @@ const VERIFY_TOKEN = process.env.VERIFY_TOKEN || "YUKI123";
 const PAGE_ACCESS_TOKEN = process.env.PAGE_ACCESS_TOKEN;
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || process.env.GEN_API;
 
-// تهيئة العميل بالمكتبة الرسمية المستقرة
 const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
-// استبدل السطر القديم بهذا السطر الصحيح والمستقر:
+// تم تعديل اسم الموديل إلى الموديل المستقر والمتاح حالياً
 const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
 app.use(bodyParser.json());
@@ -56,7 +55,7 @@ app.post("/webhook", async (req, res) => {
             await sendMessage(senderId, replyText);
           } catch (err) {
             console.error("Gemini Error:", err.message);
-            await sendMessage(senderId, "عذراً، حدث خطأ بسيط وسأعود للحديث معك حالاً.");
+            // تم إيقاف الرد التلقائي بنص الخطأ لمنع تكرار الحلقات والسبام
           }
         }
       }
