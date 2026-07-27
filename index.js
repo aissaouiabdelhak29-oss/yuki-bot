@@ -1,86 +1,91 @@
 const express = require('express');
 const bodyParser = require('body-parser');
 const axios = require('axios');
+const { GoogleGenAI } = require('@google/genai');
 
 const app = express();
 app.use(bodyParser.json());
 
-// جلب المفاتيح بأمان من متغيرات البيئة في Render
+// جلب المفاتيح من بيئة العمل بأمان تام (Render Environment Variables)
 const PAGE_ACCESS_TOKEN = process.env.PAGE_ACCESS_TOKEN;
 const VERIFY_TOKEN = 'YUKI123';
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
-// مسار التحقق من الويب هوك الخاص بفيسبوك
+// تهيئة عميل Gemini الجديد
+const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
+
+// 1. التحقق من الويب هوك (Webhook Verification) مطلوب من فيسبوك
 app.get('/webhook', (req, res) => {
     const mode = req.query['hub.mode'];
     const token = req.query['hub.verify_token'];
     const challenge = req.query['hub.challenge'];
 
-    if (mode && token) {
-        if (mode === 'subscribe' && token === VERIFY_TOKEN) {
-            console.log('WEBHOOK_VERIFIED');
-            res.status(200).send(challenge);
-        } else {
-            res.sendStatus(403);
-        }
+    if (mode && token === VERIFY_TOKEN) {
+        res.status(200).send(challenge);
     } else {
-        res.sendStatus(400);
+        res.sendStatus(403);
     }
 });
 
-// مسار استقبال الرسائل من ماسنجر ومعالجتها عبر جيمناي
+// 2. استقبال الرسائل الواردة من ميسنجر
 app.post('/webhook', async (req, res) => {
     const body = req.body;
 
     if (body.object === 'page') {
+        // الرد الفوري على فيسبوك لمنع تكرار إرسال الرسائل (السبام)
+        res.status(200).send('EVENT_RECEIVED');
+
         for (const entry of body.entry) {
-            if (!entry.messaging) continue;
-            
-            const webhook_event = entry.messaging[0];
-            const sender_psid = webhook_event.sender.id;
+            if (entry.messaging && entry.messaging[0]) {
+                const webhookEvent = entry.messaging[0];
+                const senderPsid = webhookEvent.sender.id; // معرف المستخدم على ميسنجر
 
-            if (webhook_event.message && webhook_event.message.text) {
-                const userMessage = webhook_event.message.text;
-                console.log(`Received message from ${sender_psid}: ${userMessage}`);
-
-                try {
-                    // الاتصال بنموذج gemini-3.6-flash المحدث
-                    const geminiResponse = await axios.post(
-                        `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${GEMINI_API_KEY}`,
-                        {
-                            contents: [{ parts: [{ text: userMessage }] }]
-                        }
-                    );
-
-                    const botReply = geminiResponse.data.candidates[0].content.parts[0].text || "عذراً، لم أستطع توليد رد.";
-                    await callSendAPI(sender_psid, botReply);
-                } catch (error) {
-                    console.error('Error generating AI response:', error.response?.data || error.message);
-                    await callSendAPI(sender_psid, "عذراً، حدث خطأ في معالجة الذكاء الاصطناعي.");
+                // التحقق من أن الرسالة نصية وليست مجرد تفاعل أو إعجاب
+                if (webhookEvent.message && webhookEvent.message.text) {
+                    const userMessage = webhookEvent.message.text;
+                    
+                    // توليد الرد باستخدام Gemini
+                    const botReply = await getGeminiResponse(userMessage);
+                    
+                    // إرسال الرد للمستخدم عبر ميسنجر
+                    await callSendAPI(senderPsid, botReply);
                 }
             }
         }
-        res.status(200).send('EVENT_RECEIVED');
     } else {
         res.sendStatus(404);
     }
 });
 
-// دالة إرسال الرد إلى مستخدم الماسنجر
-async function callSendAPI(sender_psid, responseText) {
-    const request_body = {
-        recipient: { id: sender_psid },
+// دالة الاتصال بـ Gemini لتوليد الرد
+async function getGeminiResponse(prompt) {
+    try {
+        const response = await ai.models.generateContent({
+            model: 'gemini-1.5-flash', // النموذج المستقر والمعتمد
+            contents: prompt,
+        });
+        return response.text;
+    } catch (error) {
+        console.error('Gemini Detailed Error:', error.response ? error.response.data : error.message);
+        return 'عذراً، حدث خطأ تقني في معالجة طلبك.';
+    }
+}
+
+// دالة إرسال الرسالة إلى واجهة Messenger API
+async function callSendAPI(senderPsid, responseText) {
+    const requestBody = {
+        recipient: { id: senderPsid },
         message: { text: responseText }
     };
 
     try {
-        await axios.post(`https://graph.facebook.com/v18.0/me/messages?access_token=${PAGE_ACCESS_TOKEN}`, request_body);
-        console.log('Message sent successfully to Messenger');
+        await axios.post(`https://graph.facebook.com/v18.0/me/messages?access_token=${PAGE_ACCESS_TOKEN}`, requestBody);
     } catch (error) {
-        console.error('Unable to send message:', error.response?.data || error.message);
+        console.error('Messenger API Error:', error.response?.data || error.message);
     }
 }
 
+// تشغيل السيرفر على المنفذ المطلوب من Render تلقائياً
 const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
