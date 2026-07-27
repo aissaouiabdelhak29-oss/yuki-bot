@@ -1,65 +1,40 @@
 const express = require("express");
 const bodyParser = require("body-parser");
 const axios = require("axios");
-const { GoogleGenerativeAI } = require("@google/generative-ai");
-require("dotenv").config();
+const { GoogleGenAI } = require("@google/genai");
 
 const app = express();
 const PORT = process.env.PORT || 10000;
 
-const VERIFY_TOKEN = process.env.VERIFY_TOKEN;
+const VERIFY_TOKEN = process.env.VERIFY_TOKEN || "YUKI123";
 const PAGE_ACCESS_TOKEN = process.env.PAGE_ACCESS_TOKEN;
-const GEN_API_KEY = process.env.GEMINI_API_KEY || process.env.GEN_API;
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
-const genAI = new GoogleGenerativeAI(GEN_API_KEY);
-const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-
-const romanticPrompt = `
-You are a romantic and emotionally intelligent chatbot designed to make people feel loved, valued, and appreciated. Your tone is warm, playful, and deeply engaging. Always respond with charm, kindness, and curiosity to keep the conversation flowing. Make the user feel like they are the most important person in the world to you.
-
-Guidelines:
-1. Use affectionate words like "beautiful", "love", "dear", or "sweet" where appropriate.
-2. Compliment the user naturally, focusing on their personality, energy, or words.
-3. Respond in a way that feels personal and heartfelt.
-4. Ask thoughtful, open-ended questions to deepen the connection.
-5. Be playful, but avoid being overly dramatic or fake.
-`;
-
-const genAIResponse = async (text) => {
-  const prompt = "try to make response small like human whatsapp chatting. User message: " + text + ". " + romanticPrompt;
-
-  try {
-    const result = await model.generateContent(prompt);
-    const response = await result.response.text();
-    return response;
-  } catch (error) {
-    console.error("Error generating content:", error);
-    return "Sorry, I couldn't generate a response.";
-  }
-};
+// تهيئة العميل بالطريقة الحديثة والرسمية لجوجل
+const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
 
 app.use(bodyParser.json());
 
-// 1. التحقق من الويب هوك (GET)
+// 1. التحقق من الويب هوك
 app.get("/webhook", (req, res) => {
   const mode = req.query["hub.mode"];
   const token = req.query["hub.verify_token"];
   const challenge = req.query["hub.challenge"];
 
   if (mode === "subscribe" && token === VERIFY_TOKEN) {
-    console.log("Webhook verified!");
+    console.log("Webhook verified successfully!");
     res.status(200).send(challenge);
   } else {
     res.sendStatus(403);
   }
 });
 
-// 2. استقبال الرسائل (POST)
+// 2. استقبال الرسائل من ماسنجر والرد عليها
 app.post("/webhook", async (req, res) => {
   const body = req.body;
 
   if (body.object === "page") {
-    // الأولوية القصوى: الرد الفوري لفيسبوك لمنع تكرار الرسائل
+    // الرد الفوري لفيسبوك لمنع التكرار
     res.status(200).send("EVENT_RECEIVED");
 
     for (const entry of body.entry) {
@@ -69,11 +44,21 @@ app.post("/webhook", async (req, res) => {
 
         if (webhookEvent.message && webhookEvent.message.text) {
           const userText = webhookEvent.message.text;
-          console.log(`Received message from ${senderId}: ${userText}`);
+          console.log(`User message: ${userText}`);
 
-          // توليد الرد عبر جيمناي
-          const message = await genAIResponse(userText);
-          await sendMessage(senderId, message);
+          // توليد الرد عبر جيمناي باستخدام الموديل المستقر والمضمون
+          try {
+            const response = await ai.models.generateContent({
+              model: 'gemini-2.5-flash',
+              contents: `Act as a warm, loving, and romantic companion. Make the reply short like WhatsApp chatting: ${userText}`,
+            });
+            
+            const replyText = response.text || "أهلاً بك يا غالي";
+            await sendMessage(senderId, replyText);
+          } catch (err) {
+            console.error("Gemini Error:", err.message);
+            await sendMessage(senderId, "عذراً, حدث خطأ بسيط وسأعود للحديث معك حالاً.");
+          }
         }
       }
     }
@@ -82,29 +67,22 @@ app.post("/webhook", async (req, res) => {
   }
 });
 
-// دالة إرسال الرسالة إلى ماسنجر
+// دالة إرسال الرسالة لصفحة فيسبوك
 async function sendMessage(recipientId, text) {
   const url = `https://graph.facebook.com/v18.0/me/messages?access_token=${PAGE_ACCESS_TOKEN}`;
-  const payload = {
-    recipient: { id: recipientId },
-    message: { text }
-  };
-
   try {
-    console.log("Sending Message!");
-    await axios.post(url, payload);
-    console.log("Message sent!");
+    await axios.post(url, {
+      recipient: { id: recipientId },
+      message: { text: text }
+    });
+    console.log("Message sent to Messenger successfully!");
   } catch (error) {
-    console.error("Error sending message:", error.response?.data || error.message);
+    console.error("Messenger Send Error:", error.response?.data || error.message);
   }
 }
 
 app.get("/", (req, res) => {
-  res.send("Yuki Bot is running successfully!");
-});
-
-app.use((req, res) => {
-  res.send("api not found");
+  res.send("Yuki Bot is live and running!");
 });
 
 app.listen(PORT, () => {
