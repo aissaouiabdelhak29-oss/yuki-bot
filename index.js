@@ -12,7 +12,8 @@ const GEMINI_API_KEY = process.env.GEMINI_API_KEY || process.env.GEN_API;
 
 // تهيئة العميل بالمكتبة الرسمية المستقرة
 const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
-const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+// استبدل السطر القديم بهذا السطر الصحيح والمستقر:
+const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
 app.use(bodyParser.json());
 
