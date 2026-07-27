@@ -7,8 +7,6 @@ app.use(bodyParser.json());
 
 const PAGE_ACCESS_TOKEN = 'EAAPZA5LSy8NEBSO6usXyfFPGVi2EETZAy0NcPYBasgdkqvZB9YtITUG4qgszzhPZAG2YCKjtsvyDmckJ5wsFWZBtlMRLIap7LS4PaEUx7zvPsZANwPmiZC3R9dBwLLHi0DJMMrTR1bbZCNZBC4qjVWU1cgZBPYSu4Ofne1Qhr8T9hcaPny9f66vkj7T4shr2djsdIY9rGCoQZDZD';
 const VERIFY_TOKEN = 'YUKI123';
-
-// ضع مفتاحك الذي ظهر في الصورة هنا بالكامل
 const GEMINI_API_KEY = 'AQ.Ab8RN6KUjn0wbjQRmQtdxvEXT1z8XpeyhIBn-SFcW0VxIyei0w';
 
 app.get('/webhook', (req, res) => {
@@ -43,9 +41,9 @@ app.post('/webhook', async (req, res) => {
                 console.log(`Received message from ${sender_psid}: ${userMessage}`);
 
                 try {
-                    // الاتصال المباشر عبر الـ API بدون عقد المكتبات
+                    // تم تحديث اسم الموديل هنا ليتوافق مع النظام
                     const geminiResponse = await axios.post(
-                        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+                        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
                         {
                             contents: [{ parts: [{ text: userMessage }] }]
                         }
