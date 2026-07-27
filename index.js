@@ -6,16 +6,14 @@ const { GoogleGenAI } = require('@google/genai');
 const app = express();
 app.use(bodyParser.json());
 
-// مفاتيح التطبيق
 const PAGE_ACCESS_TOKEN = 'EAAPZA5LSy8NEBSO6usXyfFPGVi2EETZAy0NcPYBasgdkqvZB9YtITUG4qgszzhPZAG2YCKjtsvyDmckJ5wsFWZBtlMRLIap7LS4PaEUx7zvPsZANwPmiZC3R9dBwLLHi0DJMMrTR1bbZCNZBC4qjVWU1cgZBPYSu4Ofne1Qhr8T9hcaPny9f66vkj7T4shr2djsdIY9rGCoQZDZD';
 const VERIFY_TOKEN = 'YUKI123';
 
-// ضع مفتاح جيمناي الجديد الصحيح هنا (يبدأ بـ AIza...)
-const GEMINI_API_KEY = 'AQ.Ab8RN6JodilL82nPfOlVYy05cjrwosPbh863SF_TAm-eznO76g';
+// ضع مفتاح الـ API الحقيقي هنا بين العلامتين التنقيصتين بدلاً من النص العربي
+const GEMINI_API_KEY = 'AQ.Ab8RN6KWq89gbrsUPZwbr-bOEZPJm20-YZCEs_xk0SLHrMmDnQ';
 
 const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
 
-// مسار التحقق (GET)
 app.get('/webhook', (req, res) => {
     const mode = req.query['hub.mode'];
     const token = req.query['hub.verify_token'];
@@ -33,7 +31,6 @@ app.get('/webhook', (req, res) => {
     }
 });
 
-// مسار استقبال الرسائل (POST)
 app.post('/webhook', async (req, res) => {
     const body = req.body;
 
