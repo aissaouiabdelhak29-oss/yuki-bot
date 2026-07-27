@@ -25,7 +25,7 @@ app.get("/webhook", (req, res) => {
   }
 });
 
-// 2. استقبال الرسائل من ماسنجر أو إنستغرام والرد عليها
+// 2. استقبال الرسائل من ماسنجر أو إنستغرام
 app.post("/webhook", async (req, res) => {
   const body = req.body;
 
@@ -33,26 +33,25 @@ app.post("/webhook", async (req, res) => {
     res.status(200).send("EVENT_RECEIVED");
 
     for (const entry of body.entry) {
-      // التعامل مع رسائل ماسنجر التقليدية
-      if (entry.messaging && entry.messaging[0]) {
-        const webhookEvent = entry.messaging[0];
-        const senderId = webhookEvent.sender.id;
-
-        if (webhookEvent.message && webhookEvent.message.text) {
-          await handleAiResponse(senderId, webhookEvent.message.text);
-        }
-      } 
-      // التعامل مع رسائل إنستغرام (عبر الـ Changes)
-      else if (entry.changes && entry.changes[0]) {
-        const change = entry.changes[0];
-        if (change.field === "messages" && change.value.messages) {
-          const senderId = change.value.messaging?.[0]?.sender?.id || change.value.sender?.id;
-          const userText = change.value.messages[0]?.text?.body;
-
-          if (senderId && userText) {
-            console.log(`Instagram User message: ${userText}`);
-            await handleAiResponse(senderId, userText);
+      let messagingEvents = entry.messaging || [];
+      
+      if (!messagingEvents.length && entry.changes) {
+        for (const change of entry.changes) {
+          if (change.field === "messages" && change.value) {
+            messagingEvents.push(change.value);
           }
+        }
+      }
+
+      for (const webhookEvent of messagingEvents) {
+        // تحديد الـ ID ومعرفة إذا كانت الرسالة من إنستغرام أو ماسنجر
+        const senderId = webhookEvent.sender?.id || webhookEvent.from?.id;
+        const userText = webhookEvent.message?.text || webhookEvent.text;
+        const isInstagram = body.object === "instagram" || webhookEvent.watermark !== undefined || (entry.id !== process.env.FACEBOOK_PAGE_ID && body.object === "page");
+
+        if (senderId && userText) {
+          console.log(`Message from [${body.object}]: ${userText}`);
+          await handleAiResponse(senderId, userText);
         }
       }
     }
@@ -61,10 +60,8 @@ app.post("/webhook", async (req, res) => {
   }
 });
 
-// دالة توليد الرد من الذكاء الاصطناعي وإرساله
+// دالة توليد الرد من الذكاء الاصطناعي
 async function handleAiResponse(senderId, userText) {
-  console.log(`User message: ${userText}`);
-
   try {
     const aiResponse = await axios.post(
       'https://openrouter.ai/api/v1/chat/completions',
@@ -99,22 +96,23 @@ async function handleAiResponse(senderId, userText) {
   }
 }
 
-// دالة إرسال الرسالة (تعمل لنفس واجهة ميتا لإنستغرام وماسنجر)
+// دالة إرسال الرسالة الموحدة (تتولى إرسال الرد لإنستغرام وماسنجر)
 async function sendMessage(recipientId, text) {
+  // واجهة برمجة التطبيقات الخاصة بـ Meta للرسائل واحدة للطرفين طالما التوكن يمتلك صلاحيات الحسابين
   const url = `https://graph.facebook.com/v18.0/me/messages?access_token=${PAGE_ACCESS_TOKEN}`;
   try {
     await axios.post(url, {
       recipient: { id: recipientId },
       message: { text: text }
     });
-    console.log("Message sent successfully!");
+    console.log("Message sent to Meta successfully!");
   } catch (error) {
-    console.error("Send Error:", error.response?.data || error.message);
+    console.error("Meta Send Error:", error.response?.data || error.message);
   }
 }
 
 app.get("/", (req, res) => {
-  res.send("Yuki Bot (Messenger & Instagram) is live!");
+  res.send("Yuki Bot is live!");
 });
 
 app.listen(PORT, () => {
